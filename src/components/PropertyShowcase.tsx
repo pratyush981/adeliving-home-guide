@@ -11,7 +11,7 @@ const PropertyShowcase = () => {
       bedrooms: 3,
       bathrooms: 2,
       carSpaces: 1,
-      type: "rent"
+      type: "rent" as const
     },
     {
       image: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400&h=300&fit=crop",
@@ -21,7 +21,7 @@ const PropertyShowcase = () => {
       bedrooms: 2,
       bathrooms: 2,
       carSpaces: 1,
-      type: "buy"
+      type: "buy" as const
     },
     {
       image: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop",
@@ -31,7 +31,7 @@ const PropertyShowcase = () => {
       bedrooms: 4,
       bathrooms: 2,
       carSpaces: 2,
-      type: "buy"
+      type: "buy" as const
     }
   ];
 
