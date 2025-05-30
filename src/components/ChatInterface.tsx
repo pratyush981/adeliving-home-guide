@@ -487,7 +487,7 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
             className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
             size="lg"
           >
-            <building className="mr-3 h-6 w-6" />
+            <Home className="mr-3 h-6 w-6" />
             🏘️ Rent a Property
           </Button>
         </div>
