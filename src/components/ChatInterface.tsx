@@ -90,14 +90,13 @@ interface ConversationState {
   intent: 'buy' | 'rent' | null;
   location: string;
   budget: string;
-  selectedProperty?: Property;
 }
 
 const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "G'day! I'm AdeLiving, your friendly AI real estate assistant! 😊 I'm here to help you navigate the Australian property market with confidence.\n\nTo get started, are you looking to:\n🏠 **Buy** a property\n🏘️ **Rent** a property\n\nJust type 'buy' or 'rent' to begin!",
+      text: "G'day! I'm AdeLiving, your friendly AI real estate assistant! 😊 I'm here to help you navigate the Australian property market with confidence.\n\nTo get started, what are you looking to do?",
       isUser: false,
       timestamp: new Date(),
     },
@@ -348,6 +347,30 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
     }));
   };
 
+  const handleOptionSelect = (option: string) => {
+    const userMessage: Message = {
+      id: messages.length + 1,
+      text: option,
+      isUser: true,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+
+    setTimeout(() => {
+      const response = generateResponse(option.toLowerCase().trim());
+      const aiMessage: Message = {
+        id: messages.length + 2,
+        text: response.text,
+        isUser: false,
+        timestamp: new Date(),
+        hasPropertyCards: response.hasPropertyCards,
+        properties: response.properties
+      };
+      setMessages(prev => [...prev, aiMessage]);
+    }, 1000);
+  };
+
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
 
@@ -396,16 +419,16 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
       if (input.includes('buy') || input.includes('purchase')) {
         setConversationState(prev => ({ ...prev, step: 'location', intent: 'buy' }));
         return {
-          text: "Perfect! I'll help you find a property to buy! 🏠\n\nWhich Australian city or area are you interested in? Here are some popular options:\n\n🌆 **Major Cities:**\n• Sydney\n• Melbourne\n• Brisbane\n• Perth\n• Adelaide\n\n🏖️ **Coastal Areas:**\n• Gold Coast\n• Newcastle\n• Central Coast\n\n🏛️ **Other Cities:**\n• Canberra\n• Hobart\n• Darwin\n\nJust type the city name you're interested in!"
+          text: "Perfect! I'll help you find a property to buy! 🏠\n\nWhich Australian city or area are you interested in? Choose from the options below:"
         };
       } else if (input.includes('rent') || input.includes('rental')) {
         setConversationState(prev => ({ ...prev, step: 'location', intent: 'rent' }));
         return {
-          text: "Great choice! I'll help you find the perfect rental property! 🏘️\n\nWhich Australian city or area would you like to rent in? Here are some popular options:\n\n🌆 **Major Cities:**\n• Sydney\n• Melbourne\n• Brisbane\n• Perth\n• Adelaide\n\n🏖️ **Coastal Areas:**\n• Gold Coast\n• Newcastle\n• Central Coast\n\n🏛️ **Other Cities:**\n• Canberra\n• Hobart\n• Darwin\n\nJust type the city name you're interested in!"
+          text: "Great choice! I'll help you find the perfect rental property! 🏘️\n\nWhich Australian city or area would you like to rent in? Choose from the options below:"
         };
       } else {
         return {
-          text: "I'd love to help! To get started, please let me know if you're looking to:\n\n🏠 **Buy** a property\n🏘️ **Rent** a property\n\nJust type 'buy' or 'rent' and we'll begin finding your perfect match!"
+          text: "I'd love to help! To get started, please choose what you're looking for:"
         };
       }
     }
@@ -420,14 +443,11 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
         setConversationState(prev => ({ ...prev, step: 'budget', location: matchedCity }));
         const action = conversationState.intent === 'buy' ? 'buying' : 'renting';
         return {
-          text: `Excellent choice! ${matchedCity} is a fantastic place for ${action}! 🎯\n\nNow, what's your budget range?\n\n${conversationState.intent === 'buy' ? 
-            '💰 **Buying Budget:**\n• Under $500k\n• $500k - $700k\n• $700k - $1M\n• $1M - $1.5M\n• Over $1.5M' :
-            '💸 **Weekly Rental Budget:**\n• Under $300/week\n• $300 - $500/week\n• $500 - $700/week\n• $700 - $1000/week\n• Over $1000/week'
-          }\n\nJust type your budget range (e.g., "${conversationState.intent === 'buy' ? '$500k-$700k' : '$400-$600/week'}")!`
+          text: `Excellent choice! ${matchedCity} is a fantastic place for ${action}! 🎯\n\nNow, what's your budget range? Choose from the options below:`
         };
       } else {
         return {
-          text: "I don't recognize that location. Could you please choose from one of these Australian cities?\n\n🌆 Sydney, Melbourne, Brisbane, Perth, Adelaide\n🏖️ Gold Coast, Newcastle, Central Coast\n🏛️ Canberra, Hobart, Darwin\n\nJust type the city name!"
+          text: "Please choose from one of the available Australian cities below:"
         };
       }
     }
@@ -446,8 +466,130 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
 
     // Default response for other queries
     return {
-      text: "I'd be happy to help with that! To provide you with the most relevant information, could you please let me know:\n\n1. Are you looking to **buy** or **rent**?\n2. Which **city** interests you?\n3. What's your **budget** range?\n\nOnce I have these details, I can provide personalized recommendations! 😊"
+      text: "I'd be happy to help with that! Please use the buttons above to navigate through the options, or feel free to ask me anything about Australian real estate! 😊"
     };
+  };
+
+  const renderActionButtons = () => {
+    if (conversationState.step === 'initial') {
+      return (
+        <div className="flex flex-col gap-3 mt-4 mb-6">
+          <Button
+            onClick={() => handleOptionSelect('buy')}
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+            size="lg"
+          >
+            <Home className="mr-3 h-6 w-6" />
+            🏠 Buy a Property
+          </Button>
+          <Button
+            onClick={() => handleOptionSelect('rent')}
+            className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+            size="lg"
+          >
+            <building className="mr-3 h-6 w-6" />
+            🏘️ Rent a Property
+          </Button>
+        </div>
+      );
+    }
+
+    if (conversationState.step === 'location') {
+      const majorCities = ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide'];
+      const coastalAreas = ['Gold Coast', 'Newcastle', 'Central Coast'];
+      const otherCities = ['Canberra', 'Hobart', 'Darwin'];
+
+      return (
+        <div className="mt-4 mb-6">
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">🌆 Major Cities</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {majorCities.map((city) => (
+                <Button
+                  key={city}
+                  onClick={() => handleOptionSelect(city)}
+                  variant="outline"
+                  className="hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+                >
+                  {city}
+                </Button>
+              ))}
+            </div>
+          </div>
+          
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">🏖️ Coastal Areas</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {coastalAreas.map((city) => (
+                <Button
+                  key={city}
+                  onClick={() => handleOptionSelect(city)}
+                  variant="outline"
+                  className="hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-200"
+                >
+                  {city}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">🏛️ Other Cities</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {otherCities.map((city) => (
+                <Button
+                  key={city}
+                  onClick={() => handleOptionSelect(city)}
+                  variant="outline"
+                  className="hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
+                >
+                  {city}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (conversationState.step === 'budget') {
+      const budgetOptions = conversationState.intent === 'buy' ? [
+        'Under $500k',
+        '$500k - $700k', 
+        '$700k - $1M',
+        '$1M - $1.5M',
+        'Over $1.5M'
+      ] : [
+        'Under $300/week',
+        '$300 - $500/week',
+        '$500 - $700/week', 
+        '$700 - $1000/week',
+        'Over $1000/week'
+      ];
+
+      return (
+        <div className="mt-4 mb-6">
+          <h4 className="text-sm font-medium text-gray-700 mb-3">
+            {conversationState.intent === 'buy' ? '💰 Buying Budget' : '💸 Weekly Rental Budget'}
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {budgetOptions.map((budget) => (
+              <Button
+                key={budget}
+                onClick={() => handleOptionSelect(budget)}
+                variant="outline"
+                className="hover:bg-green-50 hover:border-green-300 transition-all duration-200 text-left justify-start"
+              >
+                <DollarSign className="mr-2 h-4 w-4" />
+                {budget}
+              </Button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   useEffect(() => {
@@ -459,13 +601,13 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-emerald-50">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 p-4 flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onBackToHome}>
+      <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200 p-4 flex items-center gap-4 shadow-sm">
+        <Button variant="ghost" size="sm" onClick={onBackToHome} className="hover:bg-gray-100">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-r from-blue-600 to-emerald-600 rounded-xl">
+          <div className="p-2 bg-gradient-to-r from-blue-600 to-emerald-600 rounded-xl shadow-md">
             <Home className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -482,10 +624,10 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
             <div key={message.id}>
               <div className={`flex ${message.isUser ? "justify-end" : "justify-start"} mb-4`}>
                 <div
-                  className={`max-w-[80%] p-4 rounded-2xl ${
+                  className={`max-w-[80%] p-4 rounded-2xl shadow-md ${
                     message.isUser
                       ? "bg-gradient-to-r from-blue-600 to-emerald-600 text-white"
-                      : "bg-white/70 backdrop-blur-sm border border-gray-200 text-gray-900"
+                      : "bg-white/80 backdrop-blur-sm border border-gray-200 text-gray-900"
                   }`}
                 >
                   {!message.isUser && (
@@ -501,13 +643,16 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
                 </div>
               </div>
 
+              {/* Action Buttons */}
+              {!message.isUser && renderActionButtons()}
+
               {/* Property Cards */}
               {message.hasPropertyCards && message.properties && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 mb-6">
                   {message.properties.map((property) => (
                     <div 
                       key={property.id} 
-                      className="bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer"
+                      className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105"
                       onClick={() => handlePropertySelection(property.id)}
                     >
                       <img 
@@ -721,7 +866,7 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
       </ScrollArea>
 
       {/* Input */}
-      <div className="bg-white/80 backdrop-blur-sm border-t border-gray-200 p-4">
+      <div className="bg-white/90 backdrop-blur-sm border-t border-gray-200 p-4 shadow-lg">
         <div className="max-w-4xl mx-auto flex gap-4">
           <Input
             value={inputValue}
@@ -729,14 +874,14 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
             placeholder={
               conversationState.step === 'showing_properties' 
                 ? "Type a property number or name to see details..."
-                : "Type your response here..."
+                : "Type your message here or use the buttons above..."
             }
-            className="flex-1 rounded-full border-gray-300 focus:border-blue-500"
+            className="flex-1 rounded-full border-gray-300 focus:border-blue-500 shadow-sm"
             onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
           />
           <Button
             onClick={handleSendMessage}
-            className="bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white rounded-full px-6"
+            className="bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white rounded-full px-6 shadow-lg hover:shadow-xl transition-all duration-300"
           >
             <Send className="h-4 w-4" />
           </Button>
