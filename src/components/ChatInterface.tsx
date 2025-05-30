@@ -10,23 +10,145 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: Date;
+  hasPropertyCards?: boolean;
+  properties?: Property[];
+}
+
+interface Property {
+  id: number;
+  title: string;
+  location: string;
+  price: string;
+  bedrooms: number;
+  bathrooms: number;
+  carSpaces: number;
+  type: "rent" | "buy";
+  image: string;
+  description: string;
+  paymentOptions?: string[];
 }
 
 interface ChatInterfaceProps {
   onBackToHome: () => void;
 }
 
+interface ConversationState {
+  step: 'initial' | 'location' | 'budget' | 'showing_properties' | 'property_selected';
+  intent: 'buy' | 'rent' | null;
+  location: string;
+  budget: string;
+  selectedProperty?: Property;
+}
+
 const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "G'day! I'm AdeLiving, your friendly AI real estate assistant! 😊 I'm here to help you navigate the Australian property market with confidence. Are you looking to buy, rent, or just exploring your options?",
+      text: "G'day! I'm AdeLiving, your friendly AI real estate assistant! 😊 I'm here to help you navigate the Australian property market with confidence.\n\nTo get started, are you looking to:\n🏠 **Buy** a property\n🏘️ **Rent** a property\n\nJust type 'buy' or 'rent' to begin!",
       isUser: false,
       timestamp: new Date(),
     },
   ]);
   const [inputValue, setInputValue] = useState("");
+  const [conversationState, setConversationState] = useState<ConversationState>({
+    step: 'initial',
+    intent: null,
+    location: '',
+    budget: ''
+  });
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  const australianCities = [
+    'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Gold Coast',
+    'Newcastle', 'Canberra', 'Central Coast', 'Wollongong', 'Logan City',
+    'Geelong', 'Hobart', 'Townsville', 'Cairns', 'Darwin', 'Toowoomba',
+    'Ballarat', 'Bendigo', 'Albury', 'Launceston', 'Mackay', 'Rockhampton'
+  ];
+
+  const generateProperties = (location: string, budget: string, intent: 'buy' | 'rent'): Property[] => {
+    const propertyData = {
+      Sydney: [
+        { title: "Modern 2BR Apartment", suburb: "Bondi", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1564013799919-ab600027ffc6", description: "Stunning ocean views, walk to beach" },
+        { title: "Family Townhouse", suburb: "Parramatta", bedrooms: 3, bathrooms: 2, carSpaces: 2, image: "photo-1570129477492-45c003edd2be", description: "Modern kitchen, private courtyard" },
+        { title: "Luxury Penthouse", suburb: "Circular Quay", bedrooms: 3, bathrooms: 3, carSpaces: 2, image: "photo-1487958449943-2429e8be8625", description: "Harbor views, premium finishes" },
+        { title: "Cozy Studio", suburb: "Surry Hills", bedrooms: 1, bathrooms: 1, carSpaces: 0, image: "photo-1524230572899-a752b3835840", description: "Perfect for young professionals" },
+        { title: "Spacious Family Home", suburb: "Epping", bedrooms: 4, bathrooms: 3, carSpaces: 2, image: "photo-1568605114967-8130f3a36994", description: "Large backyard, near schools" },
+        { title: "Contemporary Unit", suburb: "Newtown", bedrooms: 2, bathrooms: 1, carSpaces: 1, image: "photo-1493397212122-2b85dda8106b", description: "Trendy location, cafes nearby" },
+        { title: "Waterfront Apartment", suburb: "Manly", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1721322800607-8c38375eef04", description: "Beach lifestyle, ferry access" },
+        { title: "Heritage Terrace", suburb: "Paddington", bedrooms: 3, bathrooms: 2, carSpaces: 1, image: "photo-1483058712412-4245e9b90334", description: "Character home, restored features" },
+        { title: "High-rise Living", suburb: "Chatswood", bedrooms: 1, bathrooms: 1, carSpaces: 1, image: "photo-1564013799919-ab600027ffc6", description: "Shopping center access, train station" },
+        { title: "Garden Apartment", suburb: "Lane Cove", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1570129477492-45c003edd2be", description: "Quiet area, leafy surrounds" }
+      ],
+      Melbourne: [
+        { title: "CBD Apartment", suburb: "Southbank", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1487958449943-2429e8be8625", description: "City skyline views, tram access" },
+        { title: "Victorian Terrace", suburb: "Fitzroy", bedrooms: 3, bathrooms: 2, carSpaces: 1, image: "photo-1524230572899-a752b3835840", description: "Original features, trendy location" },
+        { title: "Modern Townhouse", suburb: "Docklands", bedrooms: 3, bathrooms: 2, carSpaces: 2, image: "photo-1568605114967-8130f3a36994", description: "Waterfront living, new development" },
+        { title: "Family Home", suburb: "Camberwell", bedrooms: 4, bathrooms: 3, carSpaces: 2, image: "photo-1493397212122-2b85dda8106b", description: "Established neighborhood, good schools" },
+        { title: "Loft Apartment", suburb: "Richmond", bedrooms: 2, bathrooms: 1, carSpaces: 1, image: "photo-1721322800607-8c38375eef04", description: "Industrial chic, warehouse conversion" },
+        { title: "Beachside Unit", suburb: "St Kilda", bedrooms: 1, bathrooms: 1, carSpaces: 1, image: "photo-1483058712412-4245e9b90334", description: "Beach access, vibrant nightlife" },
+        { title: "Suburban House", suburb: "Glen Waverley", bedrooms: 4, bathrooms: 2, carSpaces: 2, image: "photo-1564013799919-ab600027ffc6", description: "Family-friendly, Asian cuisine" },
+        { title: "Inner City Living", suburb: "Carlton", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1570129477492-45c003edd2be", description: "University area, cafe culture" },
+        { title: "Garden Home", suburb: "Brighton", bedrooms: 3, bathrooms: 2, carSpaces: 2, image: "photo-1487958449943-2429e8be8625", description: "Beach suburb, family lifestyle" },
+        { title: "Modern Unit", suburb: "South Yarra", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1524230572899-a752b3835840", description: "Shopping precinct, dining options" }
+      ],
+      Brisbane: [
+        { title: "River Views Apartment", suburb: "New Farm", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1568605114967-8130f3a36994", description: "Brisbane River views, trendy area" },
+        { title: "Queenslander Home", suburb: "Paddington", bedrooms: 3, bathrooms: 2, carSpaces: 2, image: "photo-1493397212122-2b85dda8106b", description: "Traditional architecture, character" },
+        { title: "High-rise Living", suburb: "South Bank", bedrooms: 1, bathrooms: 1, carSpaces: 1, image: "photo-1721322800607-8c38375eef04", description: "Cultural precinct, city views" },
+        { title: "Family Townhouse", suburb: "Toowong", bedrooms: 3, bathrooms: 2, carSpaces: 2, image: "photo-1483058712412-4245e9b90334", description: "University area, train access" },
+        { title: "Modern Apartment", suburb: "Fortitude Valley", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1564013799919-ab600027ffc6", description: "Entertainment district, nightlife" },
+        { title: "Suburban Home", suburb: "Indooroopilly", bedrooms: 4, bathrooms: 3, carSpaces: 2, image: "photo-1570129477492-45c003edd2be", description: "Shopping center, family area" },
+        { title: "Penthouse Living", suburb: "Kangaroo Point", bedrooms: 3, bathrooms: 3, carSpaces: 2, image: "photo-1487958449943-2429e8be8625", description: "Story Bridge views, luxury finishes" },
+        { title: "Garden Unit", suburb: "West End", bedrooms: 2, bathrooms: 1, carSpaces: 1, image: "photo-1524230572899-a752b3835840", description: "Artistic community, markets" },
+        { title: "Waterfront Home", suburb: "Bulimba", bedrooms: 3, bathrooms: 2, carSpaces: 2, image: "photo-1568605114967-8130f3a36994", description: "River access, established area" },
+        { title: "City Fringe Living", suburb: "Spring Hill", bedrooms: 1, bathrooms: 1, carSpaces: 1, image: "photo-1493397212122-2b85dda8106b", description: "Close to CBD, historic area" }
+      ],
+      Perth: [
+        { title: "Beachside Apartment", suburb: "Scarborough", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1721322800607-8c38375eef04", description: "Ocean views, beach lifestyle" },
+        { title: "Family Home", suburb: "Subiaco", bedrooms: 4, bathrooms: 2, carSpaces: 2, image: "photo-1483058712412-4245e9b90334", description: "Central location, character home" },
+        { title: "Modern Townhouse", suburb: "Joondalup", bedrooms: 3, bathrooms: 2, carSpaces: 2, image: "photo-1564013799919-ab600027ffc6", description: "New development, family-friendly" },
+        { title: "CBD Living", suburb: "Perth CBD", bedrooms: 1, bathrooms: 1, carSpaces: 1, image: "photo-1570129477492-45c003edd2be", description: "City lifestyle, transport hub" },
+        { title: "Riverside Unit", suburb: "South Perth", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1487958449943-2429e8be8625", description: "Swan River views, zoo nearby" },
+        { title: "Coastal Home", suburb: "Fremantle", bedrooms: 3, bathrooms: 2, carSpaces: 2, image: "photo-1524230572899-a752b3835840", description: "Historic port, weekend markets" },
+        { title: "Luxury Villa", suburb: "Cottesloe", bedrooms: 4, bathrooms: 3, carSpaces: 2, image: "photo-1568605114967-8130f3a36994", description: "Premium beachside, resort living" },
+        { title: "Garden Apartment", suburb: "Mount Lawley", bedrooms: 2, bathrooms: 1, carSpaces: 1, image: "photo-1493397212122-2b85dda8106b", description: "Trendy area, cafes and bars" },
+        { title: "Family Estate", suburb: "Karrinyup", bedrooms: 4, bathrooms: 3, carSpaces: 3, image: "photo-1721322800607-8c38375eef04", description: "Shopping center, schools nearby" },
+        { title: "Modern Unit", suburb: "Leederville", bedrooms: 1, bathrooms: 1, carSpaces: 1, image: "photo-1483058712412-4245e9b90334", description: "Student area, close to city" }
+      ],
+      Adelaide: [
+        { title: "Heritage Apartment", suburb: "North Adelaide", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1564013799919-ab600027ffc6", description: "Historic area, parklands nearby" },
+        { title: "Modern Townhouse", suburb: "Mawson Lakes", bedrooms: 3, bathrooms: 2, carSpaces: 2, image: "photo-1570129477492-45c003edd2be", description: "New development, uni access" },
+        { title: "City Living", suburb: "Adelaide CBD", bedrooms: 1, bathrooms: 1, carSpaces: 1, image: "photo-1487958449943-2429e8be8625", description: "Central location, tram access" },
+        { title: "Family Home", suburb: "Burnside", bedrooms: 4, bathrooms: 3, carSpaces: 2, image: "photo-1524230572899-a752b3835840", description: "Established suburb, good schools" },
+        { title: "Beachside Unit", suburb: "Glenelg", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1568605114967-8130f3a36994", description: "Jetty Road shopping, beach access" },
+        { title: "Hills Living", suburb: "Stirling", bedrooms: 3, bathrooms: 2, carSpaces: 2, image: "photo-1493397212122-2b85dda8106b", description: "Adelaide Hills, scenic views" },
+        { title: "Garden Home", suburb: "Unley", bedrooms: 3, bathrooms: 2, carSpaces: 1, image: "photo-1721322800607-8c38375eef04", description: "Character area, cafes nearby" },
+        { title: "Modern Unit", suburb: "West Lakes", bedrooms: 2, bathrooms: 2, carSpaces: 1, image: "photo-1483058712412-4245e9b90334", description: "Waterfront living, golf course" },
+        { title: "Family Estate", suburb: "Tea Tree Gully", bedrooms: 4, bathrooms: 2, carSpaces: 2, image: "photo-1564013799919-ab600027ffc6", description: "Family suburb, new housing" },
+        { title: "Inner City Living", suburb: "Norwood", bedrooms: 2, bathrooms: 1, carSpaces: 1, image: "photo-1570129477492-45c003edd2be", description: "Parade shopping, food scene" }
+      ]
+    };
+
+    const cityData = propertyData[location as keyof typeof propertyData] || propertyData.Sydney;
+    
+    return cityData.map((prop, index) => ({
+      id: index + 1,
+      title: prop.title,
+      location: `${prop.suburb}, ${location}`,
+      price: intent === 'rent' 
+        ? `$${Math.floor(Math.random() * 400 + 200)}/week`
+        : `$${Math.floor(Math.random() * 500000 + 400000).toLocaleString()}`,
+      bedrooms: prop.bedrooms,
+      bathrooms: prop.bathrooms,
+      carSpaces: prop.carSpaces,
+      type: intent,
+      image: `https://images.unsplash.com/${prop.image}?w=400&h=300&fit=crop`,
+      description: prop.description,
+      paymentOptions: intent === 'rent' 
+        ? ['Weekly payments', 'Monthly payments', 'Bond (4 weeks)', 'Direct debit available']
+        : ['Home loan required', 'Deposit 10-20%', 'First home buyer grants available', 'Stamp duty calculator needed']
+    }));
+  };
 
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
@@ -40,14 +162,16 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
 
     setMessages(prev => [...prev, userMessage]);
 
-    // Generate AdeLiving's response using NLP
+    // Process the message based on conversation state
     setTimeout(() => {
-      const response = generateSmartResponse(inputValue);
+      const response = generateResponse(inputValue.toLowerCase().trim());
       const aiMessage: Message = {
         id: messages.length + 2,
-        text: response,
+        text: response.text,
         isUser: false,
         timestamp: new Date(),
+        hasPropertyCards: response.hasPropertyCards,
+        properties: response.properties
       };
       setMessages(prev => [...prev, aiMessage]);
     }, 1000);
@@ -55,102 +179,64 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
     setInputValue("");
   };
 
-  const generateSmartResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-    
-    // Location-specific queries
-    if (input.includes("adelaide")) {
-      if (input.includes("under") && (input.includes("700") || input.includes("$700"))) {
-        return "Great choice focusing on Adelaide! 🏡 For houses under $700k, I'd recommend looking at these fantastic suburbs:\n\n• **Woodville West & Seaton** ($450k-$580k) - Great value, close to beach\n• **Salisbury & Parafield Gardens** ($500k-$650k) - Family-friendly with good schools\n• **Morphett Vale & Hackham** ($520k-$680k) - Growing areas with new developments\n• **Munno Para & Angle Vale** ($480k-$650k) - Newer housing estates\n\nWould you like me to tell you more about any of these areas, or do you have specific requirements like number of bedrooms or proximity to work/schools?";
+  const generateResponse = (input: string): { text: string; hasPropertyCards?: boolean; properties?: Property[] } => {
+    // Step 1: Determine buy or rent intent
+    if (conversationState.step === 'initial') {
+      if (input.includes('buy') || input.includes('purchase')) {
+        setConversationState(prev => ({ ...prev, step: 'location', intent: 'buy' }));
+        return {
+          text: "Perfect! I'll help you find a property to buy! 🏠\n\nWhich Australian city or area are you interested in? Here are some popular options:\n\n🌆 **Major Cities:**\n• Sydney\n• Melbourne\n• Brisbane\n• Perth\n• Adelaide\n\n🏖️ **Coastal Areas:**\n• Gold Coast\n• Newcastle\n• Central Coast\n\n🏛️ **Other Cities:**\n• Canberra\n• Hobart\n• Darwin\n\nJust type the city name you're interested in!"
+        };
+      } else if (input.includes('rent') || input.includes('rental')) {
+        setConversationState(prev => ({ ...prev, step: 'location', intent: 'rent' }));
+        return {
+          text: "Great choice! I'll help you find the perfect rental property! 🏘️\n\nWhich Australian city or area would you like to rent in? Here are some popular options:\n\n🌆 **Major Cities:**\n• Sydney\n• Melbourne\n• Brisbane\n• Perth\n• Adelaide\n\n🏖️ **Coastal Areas:**\n• Gold Coast\n• Newcastle\n• Central Coast\n\n🏛️ **Other Cities:**\n• Canberra\n• Hobart\n• Darwin\n\nJust type the city name you're interested in!"
+        };
+      } else {
+        return {
+          text: "I'd love to help! To get started, please let me know if you're looking to:\n\n🏠 **Buy** a property\n🏘️ **Rent** a property\n\nJust type 'buy' or 'rent' and we'll begin finding your perfect match!"
+        };
       }
-      if (input.includes("glenelg")) {
-        return "Glenelg is absolutely beautiful! 🌊 It's one of Adelaide's premium beachside suburbs. Here's what living there is like:\n\n**Lifestyle:** Beach living at its finest - morning walks on the sand, great cafes, and the famous Glenelg Jetty. Very touristy in summer but quieter in winter.\n\n**Property Prices:** Houses $800k-$1.5M+, apartments $400k-$800k\n\n**Transport:** Excellent - direct tram to Adelaide CBD (30 mins)\n\n**Dining & Entertainment:** Jetty Road has amazing restaurants, pubs, and the historic Stamford Grand hotel\n\nAre you looking to buy or rent in Glenelg? And what's your budget range?";
+    }
+
+    // Step 2: Get location
+    if (conversationState.step === 'location') {
+      const matchedCity = australianCities.find(city => 
+        input.includes(city.toLowerCase()) || city.toLowerCase().includes(input)
+      );
+      
+      if (matchedCity) {
+        setConversationState(prev => ({ ...prev, step: 'budget', location: matchedCity }));
+        const action = conversationState.intent === 'buy' ? 'buying' : 'renting';
+        return {
+          text: `Excellent choice! ${matchedCity} is a fantastic place for ${action}! 🎯\n\nNow, what's your budget range?\n\n${conversationState.intent === 'buy' ? 
+            '💰 **Buying Budget:**\n• Under $500k\n• $500k - $700k\n• $700k - $1M\n• $1M - $1.5M\n• Over $1.5M' :
+            '💸 **Weekly Rental Budget:**\n• Under $300/week\n• $300 - $500/week\n• $500 - $700/week\n• $700 - $1000/week\n• Over $1000/week'
+          }\n\nJust type your budget range (e.g., "${conversationState.intent === 'buy' ? '$500k-$700k' : '$400-$600/week'}")!`
+        };
+      } else {
+        return {
+          text: "I don't recognize that location. Could you please choose from one of these Australian cities?\n\n🌆 Sydney, Melbourne, Brisbane, Perth, Adelaide\n🏖️ Gold Coast, Newcastle, Central Coast\n🏛️ Canberra, Hobart, Darwin\n\nJust type the city name!"
+        };
       }
-      return "Adelaide is a fantastic city for property! 🏡 Known for affordable housing compared to Sydney/Melbourne, great lifestyle, and excellent wine regions nearby. Which specific area of Adelaide interests you, and are you looking to buy or rent?";
     }
 
-    if (input.includes("melbourne")) {
-      if (input.includes("families") || input.includes("family")) {
-        return "Melbourne has some absolutely brilliant family suburbs! 👨‍👩‍👧‍👦 Here are my top recommendations:\n\n**Inner East (Premium):**\n• Camberwell, Hawthorn, Kew - Top schools, parks, $1M+\n\n**Outer East (Value):**\n• Ringwood, Croydon, Lilydale - Great schools, $600k-$900k\n\n**North:**\n• Eltham, Diamond Creek - Bushland feel, good schools, $700k-$1.2M\n\n**West:**\n• Williamstown, Yarraville - Character homes, cafes, $800k-$1.5M\n\n**South East:**\n• Berwick, Pakenham - New estates, family-friendly, $500k-$800k\n\nWhat's your budget range and do you prefer established suburbs or new developments?";
-      }
-      if (input.includes("student") || input.includes("students")) {
-        return "Perfect! Melbourne is Australia's student capital! 🎓 Here are the best rental suburbs for students:\n\n**Near Universities:**\n• **Carlton/Parkville** - Near UniMelb, $180-$250/week rooms\n• **Clayton** - Near Monash, $150-$220/week\n• **Footscray** - Near VU, affordable $140-$200/week\n• **Brunswick/Fitzroy** - Hip areas, $200-$280/week\n\n**Budget-Friendly Options:**\n• **Sunshine, St Albans** - $120-$180/week\n• **Reservoir, Preston** - $160-$220/week\n\n**Transport Tips:** Get a student myki card for discounted public transport!\n\nWhich university will you be attending? I can give more specific suburb recommendations!";
-      }
-      return "Melbourne's property market is diverse and exciting! 🏙️ From trendy inner-city apartments to family homes in leafy suburbs. Are you looking for a specific area, budget range, or lifestyle (student, family, professional)?";
+    // Step 3: Get budget and show properties
+    if (conversationState.step === 'budget') {
+      setConversationState(prev => ({ ...prev, step: 'showing_properties', budget: input }));
+      const properties = generateProperties(conversationState.location, input, conversationState.intent!);
+      
+      return {
+        text: `Perfect! Here are the best ${conversationState.intent === 'buy' ? 'properties for sale' : 'rental properties'} in ${conversationState.location} within your budget! 🏡\n\nI've found ${properties.length} great options for you. Each property includes payment information and financing options. Click on any property card below to learn more!\n\n💡 **Pro tip:** All properties come with detailed payment plans and ${conversationState.intent === 'buy' ? 'mortgage pre-approval assistance' : 'rental application support'}!`,
+        hasPropertyCards: true,
+        properties: properties
+      };
     }
 
-    if (input.includes("sydney")) {
-      if (input.includes("good time") || input.includes("right now") || input.includes("market")) {
-        return "Sydney's market is complex right now! 📈 Here's my honest assessment:\n\n**Current Conditions:**\n• Prices have stabilized after recent declines\n• Interest rates are affecting borrowing capacity\n• Good selection of properties available\n• Less competition than 2020-2021 peak\n\n**Pros of buying now:**\n• More negotiating power\n• Less rushed decisions\n• Better choice of properties\n\n**Considerations:**\n• Interest rates may change\n• Some areas still expensive\n• Economic uncertainty\n\n**My advice:** If you've found the right property, can comfortably afford repayments, and plan to stay 5+ years, it could be a good time. Avoid FOMO - buy when it suits YOUR situation.\n\nWhat's your budget and preferred areas? I can give more specific market insights!";
-      }
-      return "Sydney's property market is premium but offers incredible lifestyle! 🌉 Prices are high but you get world-class beaches, harbor, and career opportunities. Are you looking at specific areas or price ranges?";
-    }
-
-    if (input.includes("brisbane")) {
-      if (input.includes("gold coast") && input.includes("apartment")) {
-        return "Great comparison! Both cities offer fantastic apartment living! 🏢\n\n**Brisbane 2BR Apartments:**\n• **South Bank/CBD:** $500k-$800k, city lifestyle, river views\n• **New Farm/Teneriffe:** $600k-$900k, trendy, close to everything\n• **Kangaroo Point:** $450k-$700k, great value, city views\n\n**Gold Coast 2BR Apartments:**\n• **Surfers Paradise:** $400k-$700k, beach lifestyle, tourism-focused\n• **Broadbeach:** $500k-$900k, sophisticated dining, quieter than Surfers\n• **Burleigh Heads:** $600k-$1M+, trendy, best beaches\n\n**Key Differences:**\n• Brisbane: Better job market, cultural scene, river lifestyle\n• Gold Coast: Beach living, tourism-based, more relaxed\n\nAre you looking for investment or owner-occupier? That changes the equation significantly!";
-      }
-      if (input.includes("west end")) {
-        return "West End is brilliant for young professionals! 🎯 Here's the real scoop:\n\n**Safety:** Generally very safe, well-lit streets, good foot traffic. Like any inner-city area, stay aware at night but it's quite secure.\n\n**Lifestyle for Young Professionals:**\n• **Amazing cafes:** Blackstar Coffee, Gunshop Cafe\n• **Great bars:** Archive Beer Boutique, Catchment Brewing\n• **Easy commute:** 10 mins to CBD by bus/CityCycle\n• **Cultural scene:** GOMA, markets, live music\n• **Foodie paradise:** Boundary Street restaurants\n\n**Rental Prices:** $400-$600/week for 1BR, $500-$800/week for 2BR\n\n**Community:** Very diverse, artsy, progressive vibe - perfect for young professionals wanting culture and convenience!\n\nAre you looking to rent or buy in West End?";
-      }
-      return "Brisbane is booming! 🌴 Great lifestyle, more affordable than Sydney/Melbourne, and excellent growth potential. Which areas interest you most?";
-    }
-
-    if (input.includes("perth")) {
-      if (input.includes("under") && input.includes("500")) {
-        return "Perth has great rental value! 🏡 Under $500/week gives you excellent options:\n\n**Inner Suburbs ($400-$500/week):**\n• **Inglewood, Mount Lawley** - Character homes, close to city\n• **Victoria Park, Burswood** - Great cafes, river proximity\n\n**Coastal Areas ($350-$480/week):**\n• **Fremantle** - Historic port city, weekend markets\n• **Cockburn, Hamilton Hill** - Beach access, more affordable\n\n**Northern Suburbs ($300-$450/week):**\n• **Joondalup, Wanneroo** - Family-friendly, newer developments\n• **Madeley, Landsdale** - Great value, growing areas\n\n**What you get for $500/week:** Usually 3BR house or quality 2BR apartment\n\nAny specific requirements like proximity to work, schools, or lifestyle preferences?";
-      }
-      return "Perth offers fantastic value! 🌅 Great beaches, relaxed lifestyle, and very affordable compared to east coast. What type of property are you seeking?";
-    }
-
-    // Property type comparisons
-    if (input.includes("townhouse") && input.includes("house")) {
-      return "Excellent question! Let me break down the key differences: 🏘️\n\n**Standalone House Pros:**\n• More privacy and space\n• Usually larger backyard\n• No body corporate fees\n• Complete control over renovations\n• Generally better capital growth\n\n**Townhouse Pros:**\n• Lower maintenance (shared costs)\n• Often newer with modern features\n• Usually more affordable entry price\n• Security of gated communities\n• Shared amenities (pools, gyms)\n\n**Consider This:**\n• **Maintenance:** Houses = you fix everything; Townhouses = shared costs\n• **Lifestyle:** Do you want a big garden or low maintenance?\n• **Budget:** Townhouses often $100k-$200k less\n• **Future:** Planning for family growth?\n\nWhat's your lifestyle priority - space and privacy, or convenience and lower maintenance?";
-    }
-
-    // First home buyer advice
-    if (input.includes("first home") || (input.includes("first") && input.includes("buy"))) {
-      return "Exciting times ahead! 🎉 Here's your first home buyer roadmap:\n\n**1. Financial Preparation:**\n• Save 5-20% deposit (less with First Home Loan Deposit Scheme)\n• Budget for stamp duty, legal fees, inspections ($15k-$30k+)\n• Get pre-approval to know your borrowing limit\n\n**2. Government Help Available:**\n• First Home Owner Grant ($10k-$25k depending on state)\n• First Home Loan Deposit Scheme (5% deposit)\n• Stamp duty concessions\n\n**3. Essential Steps:**\n• Research suburbs thoroughly\n• Get building/pest inspections\n• Use a buyer's agent if overwhelmed\n• Don't rush - the right property will come\n\n**4. Common Mistakes to Avoid:**\n• Borrowing maximum amount\n• Skipping inspections\n• Emotional decisions\n• Not factoring in ongoing costs\n\nWhat's your current situation - do you have savings ready, or still in planning stage?";
-    }
-
-    // Mortgage and finance queries
-    if (input.includes("deposit") && (input.includes("need") || input.includes("much"))) {
-      return "Great question! Here's the deposit breakdown: 💰\n\n**Standard Options:**\n• **20% deposit:** Avoid LMI (Lenders Mortgage Insurance), best rates\n• **10-19% deposit:** Pay LMI but still get good rates\n• **5-9% deposit:** Higher LMI, some lender restrictions\n\n**First Home Buyer Schemes:**\n• **FHLDS:** Just 5% deposit, government guarantees rest\n• **Guarantor loans:** Parents help, potentially 0% deposit\n\n**Example on $600k property:**\n• 20% = $120k deposit + $15k costs = $135k needed\n• 10% = $60k deposit + $25k (LMI + costs) = $85k needed\n• 5% = $30k deposit + $30k (LMI + costs) = $60k needed\n\n**My advice:** Aim for 10-20% if possible, but don't wait years if you can service a loan with 5-10%. Market timing matters too!\n\nWhat's your target property price range?";
-    }
-
-    if (input.includes("mortgage") && (input.includes("explain") || input.includes("work"))) {
-      return "I'll explain mortgages in simple terms! 🏦\n\n**What's a Mortgage?**\nA loan secured by the property you're buying. The bank lends you money, you pay it back over 25-30 years with interest.\n\n**Key Components:**\n• **Principal:** The actual loan amount\n• **Interest:** What the bank charges (currently 5-7%)\n• **Repayments:** Usually monthly, covers principal + interest\n\n**Example:** $500k loan at 6% over 30 years = ~$3,000/month\n\n**Types Available:**\n• **Variable rate:** Changes with market (flexibility to pay extra)\n• **Fixed rate:** Locked rate for 1-5 years (certainty)\n• **Split loan:** Part fixed, part variable\n\n**Approval Process:**\n1. Application with income/expense details\n2. Bank values property\n3. Final approval and settlement\n\n**Key Point:** Banks assess if you can afford repayments based on income, expenses, and a buffer for rate rises.\n\nDo you want me to explain any specific part in more detail?";
-    }
-
-    // Legal and process questions
-    if (input.includes("off the plan")) {
-      return "Off the plan means buying before construction is complete! 🏗️\n\n**How it Works:**\n• You buy from plans/display suite\n• Pay 10% deposit, settle when built (12-24 months)\n• Price locked in at today's rates\n\n**Advantages:**\n• Get in before price rises\n• Choose your preferred location/floor\n• Everything brand new with warranties\n• Stamp duty often on land value only\n\n**Risks to Consider:**\n• Delays in construction\n• Final product may vary slightly\n• Market could drop before completion\n• Can't inspect actual property\n\n**Protection Available:**\n• Sunset clauses (can exit if major delays)\n• Building warranties\n• Legal contracts with specifications\n\n**My Advice:** Only buy off reputable developers, understand all contract terms, and ensure you can still afford at completion. Great for investors and buyers who want new properties!\n\nAre you considering a specific development?";
-    }
-
-    if (input.includes("under contract")) {
-      return "'Under contract' means someone has made an offer that's been accepted! 📝\n\n**What This Means:**\n• The property is sold (pending settlement)\n• No more offers are being considered\n• Buyer has cooling-off period (usually 5 business days)\n• Still possible it could fall through\n\n**Common Reasons Contracts Fall Through:**\n• Buyer can't get finance approval\n• Building inspection reveals major issues\n• Buyer changes mind during cooling-off\n• Legal/title issues discovered\n\n**If You're Interested:**\n• Ask agent to put you on backup list\n• Keep looking at other properties\n• Don't wait around - most proceed successfully\n\n**Timeline:**\n• Contract signed → Settlement (usually 30-90 days)\n• Property officially sold at settlement\n\n**For Buyers:** Once under contract, focus on finance approval, inspections, and legal review during your cooling-off period!\n\nWere you interested in a specific property that's gone under contract?";
-    }
-
-    // Rental-specific queries
-    if (input.includes("documents") && input.includes("rent")) {
-      return "Here's everything you need for rental applications! 📋\n\n**Essential Documents:**\n• **Photo ID:** Driver's license or passport\n• **Proof of Income:** Last 3 payslips or employment letter\n• **Bank statements:** Last 3 months\n• **References:** Previous landlord + character references\n• **Rental history:** If you've rented before\n\n**Additional Items:**\n• **Rental resume:** Summary of your rental history\n• **Pet references:** If you have pets\n• **Guarantor information:** If required\n\n**Pro Tips for Strong Applications:**\n• Apply immediately after inspections\n• Include a cover letter introducing yourself\n• Dress well for inspections\n• Have all documents ready to submit instantly\n• Offer to pay bond immediately\n\n**What Landlords Want:**\n• Reliable income (rent ≤ 30% of income)\n• Good rental history\n• Clean, responsible tenants\n• Long-term stability\n\nAre you preparing for applications now, or just getting ready?";
-    }
-
-    if (input.includes("lease") && (input.includes("check") || input.includes("signing"))) {
-      return "Smart to check before signing! Here are the key lease terms to review: ⚖️\n\n**Critical Clauses:**\n• **Rent amount & payment dates:** Confirm weekly/monthly amounts\n• **Lease length:** 6/12 months typical\n• **Bond amount:** Usually 4 weeks rent\n• **Pet policy:** Allowed pets and any fees\n• **Maintenance responsibilities:** Who fixes what\n\n**Red Flags to Avoid:**\n• Excessive rent increase clauses\n• Unreasonable maintenance charges to tenant\n• Restrictions on visitors/guests\n• Breaking lease penalties that seem unfair\n• Missing property condition report\n\n**Before Signing:**\n• Do thorough property inspection\n• Test all appliances, taps, lights\n• Document any existing damage\n• Understand your state's tenant rights\n• Get everything in writing\n\n**Key Rights (vary by state):**\n• Reasonable notice for inspections\n• Right to quiet enjoyment\n• Bond protection through government schemes\n\nWhich state are you renting in? Laws vary between states!";
-    }
-
-    // Negotiation and costs
-    if (input.includes("negotiate") && input.includes("price")) {
-      return "Absolutely! Negotiation is normal in Australian property! 💬\n\n**When You Can Negotiate:**\n• Property been on market 30+ days\n• Motivated sellers (relocating, upgrading)\n• Quiet market periods\n• Properties needing work\n• Your offer has strong conditions (quick settlement, cash)\n\n**How Much to Offer:**\n• Start 5-10% below asking (more if overpriced)\n• Research recent comparable sales\n• Consider property condition and market\n\n**Negotiation Tips:**\n• Make written offers through agent\n• Be respectful but firm\n• Justify your price with evidence\n• Be prepared to walk away\n• Consider other terms (settlement date, inclusions)\n\n**What Else You Can Negotiate:**\n• Include furniture/appliances\n• Earlier/later settlement\n• Repairs before settlement\n• Agent commission (if buying direct)\n\n**Market Reality:** In hot markets, expect to pay closer to asking. In slower markets, 5-15% discounts possible.\n\nWhat type of property are you looking to negotiate on?";
-    }
-
-    if (input.includes("hidden costs") || input.includes("extra costs")) {
-      return "Great question! Here are the costs many buyers forget: 💸\n\n**Upfront Costs (2-5% of price):**\n• **Stamp duty:** $15k-$50k+ depending on state/price\n• **Legal/conveyancing:** $1,200-$2,500\n• **Building inspection:** $400-$800\n• **Pest inspection:** $300-$500\n• **Loan application fees:** $300-$600\n\n**If Borrowing 80%+:**\n• **Lenders Mortgage Insurance:** $2k-$30k+\n\n**Ongoing Costs (Often Forgotten):**\n• **Council rates:** $1,500-$4,000/year\n• **Water rates:** $800-$1,500/year\n• **Strata fees:** $2,000-$8,000/year (apartments/townhouses)\n• **Insurance:** $1,000-$3,000/year\n• **Maintenance:** 1-3% of property value annually\n\n**First Year Extras:**\n• Moving costs, utility connections\n• Immediate repairs/improvements\n• Garden/maintenance equipment\n\n**Budget Rule:** Add 20-25% to your purchase price for all costs in year one!\n\nWhat's your target purchase price? I can estimate your total costs!";
-    }
-
-    // Default helpful response
-    return "I'd love to help you with that! 😊 Could you tell me a bit more about what specifically you're looking for? For example:\n\n• Are you looking to buy or rent?\n• Which city or area interests you?\n• What's your budget range?\n• Any specific requirements (bedrooms, lifestyle needs)?\n\nThe more details you share, the better I can tailor my advice to your situation! What's your main property goal right now? 🏡";
+    // Default response for other queries
+    return {
+      text: "I'd be happy to help with that! To provide you with the most relevant information, could you please let me know:\n\n1. Are you looking to **buy** or **rent**?\n2. Which **city** interests you?\n3. What's your **budget** range?\n\nOnce I have these details, I can provide personalized recommendations! 😊"
+    };
   };
 
   useEffect(() => {
@@ -182,28 +268,72 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="max-w-4xl mx-auto space-y-4">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.isUser ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[80%] p-4 rounded-2xl ${
-                  message.isUser
-                    ? "bg-gradient-to-r from-blue-600 to-emerald-600 text-white"
-                    : "bg-white/70 backdrop-blur-sm border border-gray-200 text-gray-900"
-                }`}
-              >
-                {!message.isUser && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <MessageCircle className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-600">AdeLiving</span>
-                  </div>
-                )}
-                <p className="whitespace-pre-line leading-relaxed">{message.text}</p>
-                <p className={`text-xs mt-2 ${message.isUser ? "text-blue-100" : "text-gray-500"}`}>
-                  {message.timestamp.toLocaleTimeString()}
-                </p>
+            <div key={message.id}>
+              <div className={`flex ${message.isUser ? "justify-end" : "justify-start"} mb-4`}>
+                <div
+                  className={`max-w-[80%] p-4 rounded-2xl ${
+                    message.isUser
+                      ? "bg-gradient-to-r from-blue-600 to-emerald-600 text-white"
+                      : "bg-white/70 backdrop-blur-sm border border-gray-200 text-gray-900"
+                  }`}
+                >
+                  {!message.isUser && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <MessageCircle className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-600">AdeLiving</span>
+                    </div>
+                  )}
+                  <p className="whitespace-pre-line leading-relaxed">{message.text}</p>
+                  <p className={`text-xs mt-2 ${message.isUser ? "text-blue-100" : "text-gray-500"}`}>
+                    {message.timestamp.toLocaleTimeString()}
+                  </p>
+                </div>
               </div>
+
+              {/* Property Cards */}
+              {message.hasPropertyCards && message.properties && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 mb-6">
+                  {message.properties.map((property) => (
+                    <div key={property.id} className="bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">
+                      <img 
+                        src={property.image} 
+                        alt={property.title}
+                        className="w-full h-48 object-cover"
+                      />
+                      <div className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            property.type === 'rent' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            For {property.type === 'rent' ? 'Rent' : 'Sale'}
+                          </span>
+                          <span className="text-xl font-bold text-gray-900">{property.price}</span>
+                        </div>
+                        <h3 className="font-semibold text-lg mb-1">{property.title}</h3>
+                        <p className="text-gray-600 text-sm mb-2">{property.location}</p>
+                        <p className="text-gray-600 text-sm mb-3">{property.description}</p>
+                        
+                        <div className="flex items-center gap-4 text-gray-600 text-sm mb-3">
+                          <span>{property.bedrooms} bed</span>
+                          <span>{property.bathrooms} bath</span>
+                          <span>{property.carSpaces} car</span>
+                        </div>
+
+                        <div className="border-t pt-3">
+                          <p className="text-xs font-medium text-gray-700 mb-1">Payment Options:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {property.paymentOptions?.slice(0, 2).map((option, index) => (
+                              <span key={index} className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                                {option}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -215,7 +345,7 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
           <Input
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask me about properties, suburbs, or anything real estate related..."
+            placeholder="Type your response here..."
             className="flex-1 rounded-full border-gray-300 focus:border-blue-500"
             onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
           />
