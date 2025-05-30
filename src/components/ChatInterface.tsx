@@ -1,8 +1,7 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send, Home, MessageCircle } from "lucide-react";
+import { ArrowLeft, Send, Home, MessageCircle, MapPin, DollarSign, Calculator, Clock, Shield } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Message {
@@ -12,6 +11,8 @@ interface Message {
   timestamp: Date;
   hasPropertyCards?: boolean;
   properties?: Property[];
+  hasPropertyDetail?: boolean;
+  propertyDetail?: PropertyDetail;
 }
 
 interface Property {
@@ -26,6 +27,58 @@ interface Property {
   image: string;
   description: string;
   paymentOptions?: string[];
+}
+
+interface PropertyDetail {
+  id: number;
+  title: string;
+  location: string;
+  price: string;
+  bedrooms: number;
+  bathrooms: number;
+  carSpaces: number;
+  type: "rent" | "buy";
+  image: string;
+  description: string;
+  detailedDescription: string;
+  features: string[];
+  nearbyAmenities: string[];
+  transportOptions: string[];
+  financingOptions: FinancingOption[];
+  locationDetails: LocationDetails;
+  propertySpecs: PropertySpecs;
+}
+
+interface FinancingOption {
+  type: string;
+  description: string;
+  details: string[];
+  monthlyPayment?: string;
+  interestRate?: string;
+  loanTerm?: string;
+}
+
+interface LocationDetails {
+  suburb: string;
+  city: string;
+  postcode: string;
+  walkScore: number;
+  crimeRating: string;
+  schoolRating: string;
+  publicTransport: string[];
+  nearbyShops: string[];
+  medicalFacilities: string[];
+}
+
+interface PropertySpecs {
+  landSize: string;
+  buildingSize: string;
+  yearBuilt: string;
+  propertyType: string;
+  councilRates: string;
+  waterRates: string;
+  energyRating: string;
+  inspection: string;
 }
 
 interface ChatInterfaceProps {
@@ -64,6 +117,151 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
     'Geelong', 'Hobart', 'Townsville', 'Cairns', 'Darwin', 'Toowoomba',
     'Ballarat', 'Bendigo', 'Albury', 'Launceston', 'Mackay', 'Rockhampton'
   ];
+
+  const generatePropertyDetail = (propertyId: number, location: string, intent: 'buy' | 'rent'): PropertyDetail => {
+    const baseProperty = generateProperties(location, "", intent).find(p => p.id === propertyId);
+    if (!baseProperty) return {} as PropertyDetail;
+
+    const financingOptions: FinancingOption[] = intent === 'buy' ? [
+      {
+        type: "Standard Home Loan",
+        description: "Traditional mortgage with competitive rates",
+        details: [
+          "Minimum 10% deposit required",
+          "Principal and interest payments",
+          "Choice of fixed or variable rates",
+          "Pre-approval available"
+        ],
+        monthlyPayment: "$2,840",
+        interestRate: "6.2% p.a.",
+        loanTerm: "30 years"
+      },
+      {
+        type: "First Home Buyer Package",
+        description: "Special rates and grants for first-time buyers",
+        details: [
+          "5% deposit with LMI waiver options",
+          "Government grants up to $25,000",
+          "Reduced stamp duty",
+          "Free property valuation"
+        ],
+        monthlyPayment: "$2,650",
+        interestRate: "5.8% p.a.",
+        loanTerm: "30 years"
+      },
+      {
+        type: "Investment Loan",
+        description: "Tailored for property investors",
+        details: [
+          "Interest-only payment options",
+          "Tax deductible interest",
+          "20% deposit typically required",
+          "Rental income assessment"
+        ],
+        monthlyPayment: "$2,100 (IO)",
+        interestRate: "6.5% p.a.",
+        loanTerm: "30 years"
+      }
+    ] : [
+      {
+        type: "Standard Rental",
+        description: "Traditional rental agreement",
+        details: [
+          "4 weeks bond required",
+          "Weekly rent in advance",
+          "6-12 month lease terms",
+          "Tenant insurance recommended"
+        ],
+        monthlyPayment: baseProperty.price.replace('/week', '/month'),
+        interestRate: "N/A",
+        loanTerm: "Lease term"
+      },
+      {
+        type: "Rent-to-Own Option",
+        description: "Path to ownership through rental",
+        details: [
+          "Higher weekly rent with equity building",
+          "Option to purchase after 2-5 years",
+          "Portion of rent counts toward deposit",
+          "Fixed purchase price"
+        ],
+        monthlyPayment: `${baseProperty.price} + $100/week`,
+        interestRate: "N/A",
+        loanTerm: "2-5 years"
+      }
+    ];
+
+    const locationDetails: LocationDetails = {
+      suburb: baseProperty.location.split(',')[0],
+      city: location,
+      postcode: Math.floor(Math.random() * 9000) + 1000 + "",
+      walkScore: Math.floor(Math.random() * 40) + 60,
+      crimeRating: ["Very Low", "Low", "Moderate"][Math.floor(Math.random() * 3)],
+      schoolRating: ["Excellent", "Good", "Average"][Math.floor(Math.random() * 3)],
+      publicTransport: ["Train station 800m", "Bus stop 200m", "Tram stop 1.2km"],
+      nearbyShops: ["Westfield Shopping Center", "Local supermarket", "Specialty stores"],
+      medicalFacilities: ["General Practitioner 500m", "Pharmacy 300m", "Hospital 5km"]
+    };
+
+    const propertySpecs: PropertySpecs = {
+      landSize: Math.floor(Math.random() * 300) + 200 + "m²",
+      buildingSize: Math.floor(Math.random() * 100) + 150 + "m²",
+      yearBuilt: Math.floor(Math.random() * 30) + 1990 + "",
+      propertyType: baseProperty.bedrooms > 3 ? "House" : baseProperty.bedrooms > 1 ? "Townhouse" : "Apartment",
+      councilRates: "$" + (Math.floor(Math.random() * 1000) + 1500) + "/year",
+      waterRates: "$" + (Math.floor(Math.random() * 300) + 400) + "/year",
+      energyRating: Math.floor(Math.random() * 3) + 6 + " stars",
+      inspection: intent === 'buy' ? "Building and pest inspection recommended" : "Routine inspections quarterly"
+    };
+
+    return {
+      ...baseProperty,
+      detailedDescription: `This ${propertySpecs.propertyType.toLowerCase()} offers exceptional ${intent === 'buy' ? 'investment potential' : 'rental living'} in the heart of ${locationDetails.suburb}. ${baseProperty.description} The property features modern finishes throughout and has been well-maintained.`,
+      features: [
+        "Modern kitchen with stone benchtops",
+        "Split-system air conditioning",
+        "Built-in wardrobes",
+        "Secure parking",
+        "Outdoor entertaining area",
+        "Low maintenance gardens",
+        "Storage throughout",
+        "Quality fixtures and fittings"
+      ],
+      nearbyAmenities: [
+        "Shopping centers within 2km",
+        "Restaurants and cafes nearby",
+        "Parks and recreational facilities",
+        "Sports complexes",
+        "Libraries and community centers",
+        "Beaches/waterfront (if applicable)"
+      ],
+      transportOptions: [
+        "Public transport nearby",
+        "Major roads accessible",
+        "Airport access within 45 minutes",
+        "Bike paths available",
+        "Walking distance to amenities"
+      ],
+      financingOptions,
+      locationDetails,
+      propertySpecs
+    };
+  };
+
+  const handlePropertySelection = (propertyId: number) => {
+    const propertyDetail = generatePropertyDetail(propertyId, conversationState.location, conversationState.intent!);
+    
+    const aiMessage: Message = {
+      id: messages.length + 1,
+      text: `Here are the complete details for **${propertyDetail.title}** in ${propertyDetail.location}! 🏡\n\nI've compiled all the information you need including financing options, location details, property specifications, and more. This gives you everything needed to make an informed decision!`,
+      isUser: false,
+      timestamp: new Date(),
+      hasPropertyDetail: true,
+      propertyDetail: propertyDetail
+    };
+
+    setMessages(prev => [...prev, aiMessage]);
+  };
 
   const generateProperties = (location: string, budget: string, intent: 'buy' | 'rent'): Property[] => {
     const propertyData = {
@@ -161,6 +359,19 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+
+    // Check if user is selecting a property by name/number
+    if (conversationState.step === 'showing_properties') {
+      const propertyMatch = inputValue.match(/(\d+)|property\s*(\d+)|show\s*me\s*(.*)/i);
+      if (propertyMatch) {
+        const propertyId = propertyMatch[1] ? parseInt(propertyMatch[1]) : 1;
+        setTimeout(() => {
+          handlePropertySelection(propertyId);
+        }, 1000);
+        setInputValue("");
+        return;
+      }
+    }
 
     // Process the message based on conversation state
     setTimeout(() => {
@@ -294,7 +505,11 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
               {message.hasPropertyCards && message.properties && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 mb-6">
                   {message.properties.map((property) => (
-                    <div key={property.id} className="bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">
+                    <div 
+                      key={property.id} 
+                      className="bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer"
+                      onClick={() => handlePropertySelection(property.id)}
+                    >
                       <img 
                         src={property.image} 
                         alt={property.title}
@@ -320,7 +535,7 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
                         </div>
 
                         <div className="border-t pt-3">
-                          <p className="text-xs font-medium text-gray-700 mb-1">Payment Options:</p>
+                          <p className="text-xs font-medium text-gray-700 mb-1">Click for full details</p>
                           <div className="flex flex-wrap gap-1">
                             {property.paymentOptions?.slice(0, 2).map((option, index) => (
                               <span key={index} className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
@@ -334,6 +549,172 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
                   ))}
                 </div>
               )}
+
+              {/* Property Detail View */}
+              {message.hasPropertyDetail && message.propertyDetail && (
+                <div className="bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl overflow-hidden mt-4 mb-6">
+                  <img 
+                    src={message.propertyDetail.image} 
+                    alt={message.propertyDetail.title}
+                    className="w-full h-64 object-cover"
+                  />
+                  
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">{message.propertyDetail.title}</h2>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <MapPin className="h-4 w-4" />
+                          <span>{message.propertyDetail.location}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-gray-900">{message.propertyDetail.price}</div>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          message.propertyDetail.type === 'rent' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          For {message.propertyDetail.type === 'rent' ? 'Rent' : 'Sale'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900">{message.propertyDetail.bedrooms}</div>
+                        <div className="text-sm text-gray-600">Bedrooms</div>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900">{message.propertyDetail.bathrooms}</div>
+                        <div className="text-sm text-gray-600">Bathrooms</div>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900">{message.propertyDetail.carSpaces}</div>
+                        <div className="text-sm text-gray-600">Car Spaces</div>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900">{message.propertyDetail.locationDetails.walkScore}</div>
+                        <div className="text-sm text-gray-600">Walk Score</div>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-2">Description</h3>
+                      <p className="text-gray-700 leading-relaxed">{message.propertyDetail.detailedDescription}</p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6 mb-6">
+                      <div>
+                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          <Home className="h-5 w-5 text-blue-600" />
+                          Property Features
+                        </h3>
+                        <ul className="space-y-2">
+                          {message.propertyDetail.features.map((feature, index) => (
+                            <li key={index} className="flex items-center gap-2 text-gray-700">
+                              <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          <MapPin className="h-5 w-5 text-emerald-600" />
+                          Location Details
+                        </h3>
+                        <div className="space-y-2 text-sm">
+                          <div><strong>Suburb:</strong> {message.propertyDetail.locationDetails.suburb}</div>
+                          <div><strong>Postcode:</strong> {message.propertyDetail.locationDetails.postcode}</div>
+                          <div><strong>Crime Rating:</strong> {message.propertyDetail.locationDetails.crimeRating}</div>
+                          <div><strong>School Rating:</strong> {message.propertyDetail.locationDetails.schoolRating}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <DollarSign className="h-5 w-5 text-green-600" />
+                        Financing Options
+                      </h3>
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {message.propertyDetail.financingOptions.map((option, index) => (
+                          <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                            <h4 className="font-semibold text-gray-900 mb-2">{option.type}</h4>
+                            <p className="text-sm text-gray-600 mb-3">{option.description}</p>
+                            <div className="space-y-1 text-xs">
+                              {option.monthlyPayment && (
+                                <div className="flex justify-between">
+                                  <span>Monthly Payment:</span>
+                                  <span className="font-medium">{option.monthlyPayment}</span>
+                                </div>
+                              )}
+                              {option.interestRate && (
+                                <div className="flex justify-between">
+                                  <span>Interest Rate:</span>
+                                  <span className="font-medium">{option.interestRate}</span>
+                                </div>
+                              )}
+                              {option.loanTerm && (
+                                <div className="flex justify-between">
+                                  <span>Term:</span>
+                                  <span className="font-medium">{option.loanTerm}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          <Calculator className="h-5 w-5 text-purple-600" />
+                          Property Specifications
+                        </h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Land Size:</span>
+                            <span className="font-medium">{message.propertyDetail.propertySpecs.landSize}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Building Size:</span>
+                            <span className="font-medium">{message.propertyDetail.propertySpecs.buildingSize}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Year Built:</span>
+                            <span className="font-medium">{message.propertyDetail.propertySpecs.yearBuilt}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Energy Rating:</span>
+                            <span className="font-medium">{message.propertyDetail.propertySpecs.energyRating}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Council Rates:</span>
+                            <span className="font-medium">{message.propertyDetail.propertySpecs.councilRates}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          <Clock className="h-5 w-5 text-orange-600" />
+                          Nearby Amenities
+                        </h3>
+                        <ul className="space-y-2">
+                          {message.propertyDetail.nearbyAmenities.slice(0, 6).map((amenity, index) => (
+                            <li key={index} className="flex items-center gap-2 text-sm text-gray-700">
+                              <div className="w-1.5 h-1.5 bg-orange-600 rounded-full"></div>
+                              {amenity}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -345,7 +726,11 @@ const ChatInterface = ({ onBackToHome }: ChatInterfaceProps) => {
           <Input
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Type your response here..."
+            placeholder={
+              conversationState.step === 'showing_properties' 
+                ? "Type a property number or name to see details..."
+                : "Type your response here..."
+            }
             className="flex-1 rounded-full border-gray-300 focus:border-blue-500"
             onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
           />
