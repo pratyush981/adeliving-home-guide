@@ -1,12 +1,22 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState } from "react";
+import WelcomeSection from "@/components/WelcomeSection";
+import ChatInterface from "@/components/ChatInterface";
+import PropertyShowcase from "@/components/PropertyShowcase";
 
 const Index = () => {
+  const [isChatStarted, setIsChatStarted] = useState(false);
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-emerald-50">
+      {!isChatStarted ? (
+        <div className="container mx-auto px-4 py-8">
+          <WelcomeSection onStartChat={() => setIsChatStarted(true)} />
+          <PropertyShowcase />
+        </div>
+      ) : (
+        <ChatInterface onBackToHome={() => setIsChatStarted(false)} />
+      )}
     </div>
   );
 };
